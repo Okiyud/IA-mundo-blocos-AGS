@@ -1,28 +1,20 @@
-
----
-
-```smv
--- blocks.smv
--- Máquina de Estados - Mundo dos Blocos com tamanhos variáveis
--- Compatível com o código Prolog fornecido
+-- blocks_scenarios.smv
+-- Máquina de Estados - Mundo dos Blocos com variável scenario
+-- Um único arquivo para múltiplos cenários iniciais
 
 MODULE main
 
--- Cada bloco tem uma posição discreta:
--- 0..6  = posição inicial na mesa (slot à esquerda)
--- 7..10 = empilhado sobre outro bloco (on_x codificado)
 CONSTANTS
   MAXLOC := 10;
 
 VAR
-  loc_a : 0..MAXLOC;
-  loc_b : 0..MAXLOC;
-  loc_c : 0..MAXLOC;
-  loc_d : 0..MAXLOC;
+  scenario : 1..3;      -- define qual cenário inicial será usado
+  loc_a    : 0..MAXLOC;
+  loc_b    : 0..MAXLOC;
+  loc_c    : 0..MAXLOC;
+  loc_d    : 0..MAXLOC;
+  move     : 0..3;      -- código da ação escolhida
 
-  move : 0..20; -- código da ação escolhida
-
--- Larguras (size/2)
 DEFINE
   SIZE_A := 1;
   SIZE_B := 1;
@@ -30,14 +22,12 @@ DEFINE
   SIZE_D := 2;
   TABLE_WIDTH := 7;
 
--- Códigos para representar "on"
-DEFINE
   ON_A := 7;
   ON_B := 8;
   ON_C := 9;
   ON_D := 10;
 
--- Posição absoluta: se estiver sobre outro bloco, herda a posição do suporte
+-- posição absoluta: se estiver sobre outro bloco, herda a posição do suporte
 DEFINE
   abs_pos_a := case
     loc_a <= 6 : loc_a;
@@ -71,64 +61,89 @@ DEFINE
     TRUE : 0;
   esac;
 
--- Um bloco está "clear" se nenhum outro está sobre ele
+-- um bloco está "clear" se nenhum outro está sobre ele
 DEFINE
   clear_a := !(loc_b = ON_A | loc_c = ON_A | loc_d = ON_A);
   clear_b := !(loc_a = ON_B | loc_c = ON_B | loc_d = ON_B);
   clear_c := !(loc_a = ON_C | loc_b = ON_C | loc_d = ON_C);
   clear_d := !(loc_a = ON_D | loc_b = ON_D | loc_c = ON_D);
 
--- Pré-condições simplificadas para empilhamento
+-- pré-condições simplificadas
 DEFINE
-  can_move_a_on_b := clear_a & clear_b & (SIZE_A <= SIZE_B);
   can_move_a_on_c := clear_a & clear_c & (SIZE_A <= SIZE_C);
-  can_move_a_on_d := clear_a & clear_d & (SIZE_A <= SIZE_D);
-
   can_move_b_on_a := clear_b & clear_a & (SIZE_B <= SIZE_A);
-  can_move_b_on_c := clear_b & clear_c & (SIZE_B <= SIZE_C);
-  can_move_b_on_d := clear_b & clear_d & (SIZE_B <= SIZE_D);
-
-  can_move_c_on_a := clear_c & clear_a & (SIZE_C <= SIZE_A);
-  can_move_c_on_b := clear_c & clear_b & (SIZE_C <= SIZE_B);
-  can_move_c_on_d := clear_c & clear_d & (SIZE_C <= SIZE_D);
-
-  can_move_d_on_a := clear_d & clear_a & (SIZE_D <= SIZE_A);
   can_move_d_on_b := clear_d & clear_b & (SIZE_D <= SIZE_B);
-  can_move_d_on_c := clear_d & clear_c & (SIZE_D <= SIZE_C);
 
--- Estado inicial (exemplo: Situação 1)
-INIT
-  loc_a = 3 & loc_b = 4 & loc_c = 0 & loc_d = 5 & move = 0;
+-- inicialização de loc_* dependendo do cenário
+ASSIGN
+  init(loc_a) :=
+    case
+      scenario = 1 : 3;
+      scenario = 2 : 1;
+      scenario = 3 : 0;
+    esac;
 
--- Transições: define como os blocos podem mudar de posição
-TRANS
-  case
-    move = 1 : next(loc_a) = ON_C;   -- move a on c
-    move = 2 : next(loc_b) = ON_A;   -- move b on a
-    move = 3 : next(loc_d) = ON_B;   -- move d on b
-    TRUE : next(loc_a) = loc_a;
-  esac
-  &
-  case
-    move = 1 : next(loc_b) = loc_b;
-    move = 2 : next(loc_b) = loc_b;
-    TRUE : next(loc_b) = loc_b;
-  esac
-  &
-  case
-    TRUE : next(loc_c) = loc_c;
-  esac
-  &
-  case
-    TRUE : next(loc_d) = loc_d;
-  esac
-  &
-  TRUE : next(move) in {0,1,2,3};
+  init(loc_b) :=
+    case
+      scenario = 1 : 4;
+      scenario = 2 : 2;
+      scenario = 3 : 5;
+    esac;
 
--- Objetivo: Situação 1 (torre completa c–a–b–d)
--- pos(c,table(0)), pos(a,on(c)), pos(b,on(a)), pos(d,on(b))
+  init(loc_c) :=
+    case
+      scenario = 1 : 0;
+      scenario = 2 : 3;
+      scenario = 3 : 1;
+    esac;
+
+  init(loc_d) :=
+    case
+      scenario = 1 : 5;
+      scenario = 2 : 4;
+      scenario = 3 : 2;
+    esac;
+
+  init(move) := 0;  -- sempre inicia move em 0
+
+-- transições de estado
+ASSIGN
+  next(loc_a) :=
+    case
+      move = 1 & can_move_a_on_c : ON_C;
+      TRUE : loc_a;
+    esac;
+
+  next(loc_b) :=
+    case
+      move = 2 & can_move_b_on_a : ON_A;
+      TRUE : loc_b;
+    esac;
+
+  next(loc_c) :=
+    case
+      TRUE : loc_c;
+    esac;
+
+  next(loc_d) :=
+    case
+      move = 3 & can_move_d_on_b : ON_B;
+      TRUE : loc_d;
+    esac;
+
+  next(move) :=
+    case
+      move < 3 : move + 1;
+      TRUE : 0;
+    esac;
+
+-- objetivos separados para cada cenário
 DEFINE
-  goal := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
+  goal1 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
+  goal2 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar se o objetivo do cenário 2 for diferente
+  goal3 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar se o objetivo do cenário 3 for diferente
 
--- Verifica se existe caminho que leva ao estado objetivo
-CTLSPEC EF(goal)
+-- especificações CTL para cada cenário
+CTLSPEC EF(goal1);
+CTLSPEC EF(goal2);
+CTLSPEC EF(goal3);
