@@ -1,19 +1,19 @@
--- blocks_scenarios.smv
--- Máquina de Estados - Mundo dos Blocos com variável scenario
--- Um único arquivo para múltiplos cenários iniciais
+-- blocks_scenarios_fixed.smv
+-- Máquina de Estados - Mundo dos Blocos com múltiplos cenários
+-- Versão corrigida e compatível com NuSMV
 
 MODULE main
 
 CONSTANTS
   MAXLOC := 10;
+  SCENARIO := 1;  -- <<< escolha aqui: 1, 2 ou 3
 
 VAR
-  scenario : 1..3;      -- define qual cenário inicial será usado
-  loc_a    : 0..MAXLOC;
-  loc_b    : 0..MAXLOC;
-  loc_c    : 0..MAXLOC;
-  loc_d    : 0..MAXLOC;
-  move     : 0..3;      -- código da ação escolhida
+  loc_a : 0..MAXLOC;
+  loc_b : 0..MAXLOC;
+  loc_c : 0..MAXLOC;
+  loc_d : 0..MAXLOC;
+  move  : 0..3;  -- código da ação escolhida
 
 DEFINE
   SIZE_A := 1;
@@ -74,37 +74,37 @@ DEFINE
   can_move_b_on_a := clear_b & clear_a & (SIZE_B <= SIZE_A);
   can_move_d_on_b := clear_d & clear_b & (SIZE_D <= SIZE_B);
 
--- inicialização de loc_* dependendo do cenário
+-- inicialização de loc_* dependendo do cenário escolhido
 ASSIGN
   init(loc_a) :=
     case
-      scenario = 1 : 3;
-      scenario = 2 : 1;
-      scenario = 3 : 0;
+      SCENARIO = 1 : 3;
+      SCENARIO = 2 : 1;
+      SCENARIO = 3 : 0;
     esac;
 
   init(loc_b) :=
     case
-      scenario = 1 : 4;
-      scenario = 2 : 2;
-      scenario = 3 : 5;
+      SCENARIO = 1 : 4;
+      SCENARIO = 2 : 2;
+      SCENARIO = 3 : 5;
     esac;
 
   init(loc_c) :=
     case
-      scenario = 1 : 0;
-      scenario = 2 : 3;
-      scenario = 3 : 1;
+      SCENARIO = 1 : 0;
+      SCENARIO = 2 : 3;
+      SCENARIO = 3 : 1;
     esac;
 
   init(loc_d) :=
     case
-      scenario = 1 : 5;
-      scenario = 2 : 4;
-      scenario = 3 : 2;
+      SCENARIO = 1 : 5;
+      SCENARIO = 2 : 4;
+      SCENARIO = 3 : 2;
     esac;
 
-  init(move) := 0;  -- sempre inicia move em 0
+  init(move) := 0;
 
 -- transições de estado
 ASSIGN
@@ -140,10 +140,10 @@ ASSIGN
 -- objetivos separados para cada cenário
 DEFINE
   goal1 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
-  goal2 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar se o objetivo do cenário 2 for diferente
-  goal3 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar se o objetivo do cenário 3 for diferente
+  goal2 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar conforme necessário
+  goal3 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);  -- ajustar conforme necessário
 
--- especificações CTL para cada cenário
+-- especificações CTL: existe um caminho até o objetivo de cada cenário
 CTLSPEC EF(goal1);
 CTLSPEC EF(goal2);
 CTLSPEC EF(goal3);
