@@ -4,158 +4,122 @@
 
 MODULE main
 
-CONSTANTS
-  MAXLOC := 10;
-  SCENARIO := 1;  -- <<< escolha o cenário: 1, 2 ou 3
-
 VAR
   loc_a : 0..MAXLOC;
   loc_b : 0..MAXLOC;
   loc_c : 0..MAXLOC;
   loc_d : 0..MAXLOC;
-  move  : 0..3;  -- código da ação escolhida
+  -- 'move' agora representa todas as ações possíveis de forma não-determinística
+  -- 0: no-op, 1-4: move A, 5-8: move B, 9-12: move C, 13-16: move D
+  move  : 0..16;
 
 DEFINE
+  -- Constantes
+  MAXLOC := 10;
+  SCENARIO := 1;  -- <<< escolha o cenário: 1, 2 ou 3
+
+  -- Definições de tamanho e posições
   SIZE_A := 1;
   SIZE_B := 1;
   SIZE_C := 2;
   SIZE_D := 2;
-  TABLE_WIDTH := 7;
+  
+  -- Posições na mesa (cada bloco tem sua "vaga" na mesa)
+  TABLE_A := 1;
+  TABLE_B := 2;
+  TABLE_C := 3;
+  TABLE_D := 4;
 
+  -- Posições nos blocos
   ON_A := 7;
   ON_B := 8;
   ON_C := 9;
   ON_D := 10;
-
--- posição absoluta: se estiver sobre outro bloco, herda a posição do suporte
-DEFINE
-  abs_pos_a := case
-    loc_a <= 6 : loc_a;
-    loc_a = ON_B : abs_pos_b;
-    loc_a = ON_C : abs_pos_c;
-    loc_a = ON_D : abs_pos_d;
-    TRUE : 0;
-  esac;
-
-  abs_pos_b := case
-    loc_b <= 6 : loc_b;
-    loc_b = ON_A : abs_pos_a;
-    loc_b = ON_C : abs_pos_c;
-    loc_b = ON_D : abs_pos_d;
-    TRUE : 0;
-  esac;
-
-  abs_pos_c := case
-    loc_c <= 6 : loc_c;
-    loc_c = ON_A : abs_pos_a;
-    loc_c = ON_B : abs_pos_b;
-    loc_c = ON_D : abs_pos_d;
-    TRUE : 0;
-  esac;
-
-  abs_pos_d := case
-    loc_d <= 6 : loc_d;
-    loc_d = ON_A : abs_pos_a;
-    loc_d = ON_B : abs_pos_b;
-    loc_d = ON_C : abs_pos_c;
-    TRUE : 0;
-  esac;
-
--- um bloco está "clear" se nenhum outro está sobre ele
-DEFINE
+  
+  -- um bloco está "clear" se nenhum outro está sobre ele
   clear_a := !(loc_b = ON_A | loc_c = ON_A | loc_d = ON_A);
   clear_b := !(loc_a = ON_B | loc_c = ON_B | loc_d = ON_B);
   clear_c := !(loc_a = ON_C | loc_b = ON_C | loc_d = ON_C);
   clear_d := !(loc_a = ON_D | loc_b = ON_D | loc_c = ON_D);
 
--- pré-condições simplificadas
-DEFINE
+  -- Pré-condições para todas as ações possíveis
+  can_move_a_to_table := clear_a;
+  can_move_b_to_table := clear_b;
+  can_move_c_to_table := clear_c;
+  can_move_d_to_table := clear_d;
+
+  can_move_a_on_b := clear_a & clear_b & (SIZE_A <= SIZE_B);
   can_move_a_on_c := clear_a & clear_c & (SIZE_A <= SIZE_C);
+  can_move_a_on_d := clear_a & clear_d & (SIZE_A <= SIZE_D);
+  
   can_move_b_on_a := clear_b & clear_a & (SIZE_B <= SIZE_A);
+  can_move_b_on_c := clear_b & clear_c & (SIZE_B <= SIZE_C);
+  can_move_b_on_d := clear_b & clear_d & (SIZE_B <= SIZE_D);
+
+  can_move_c_on_a := clear_c & clear_a & (SIZE_C <= SIZE_A);
+  can_move_c_on_b := clear_c & clear_b & (SIZE_C <= SIZE_B);
+  can_move_c_on_d := clear_c & clear_d & (SIZE_C <= SIZE_D);
+
+  can_move_d_on_a := clear_d & clear_a & (SIZE_D <= SIZE_A);
   can_move_d_on_b := clear_d & clear_b & (SIZE_D <= SIZE_B);
+  can_move_d_on_c := clear_d & clear_c & (SIZE_D <= SIZE_C);
+  
+  -- objetivos
+  goal1 := (loc_c = TABLE_C) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
+  goal2 := (loc_c = TABLE_C) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
+  goal3 := (loc_c = TABLE_C) & (loc_d = ON_C) & (loc_a = ON_D) & (loc_b = ON_A);
 
--- inicialização dos blocos conforme o cenário
 ASSIGN
-  init(loc_a) :=
-    case
-      SCENARIO = 1 : 3;  -- situação 1
-      SCENARIO = 2 : 0;  -- situação 2
-      SCENARIO = 3 : 3;  -- situação 3
-      TRUE : 0;
-    esac;
-
-  init(loc_b) :=
-    case
-      SCENARIO = 1 : 4;
-      SCENARIO = 2 : 1;
-      SCENARIO = 3 : 4;
-      TRUE : 0;
-    esac;
-
-  init(loc_c) :=
-    case
-      SCENARIO = 1 : 0;
-      SCENARIO = 2 : 2;
-      SCENARIO = 3 : 0;
-      TRUE : 0;
-    esac;
-
-  init(loc_d) :=
-    case
-      SCENARIO = 1 : 5;
-      SCENARIO = 2 : 3;
-      SCENARIO = 3 : 5;
-      TRUE : 0;
-    esac;
-
+  -- inicialização dos blocos conforme o cenário
+  init(loc_a) := case SCENARIO = 1 : 3; SCENARIO = 2 : 1; SCENARIO = 3 : 3; TRUE : 0; esac;
+  init(loc_b) := case SCENARIO = 1 : 4; SCENARIO = 2 : 2; SCENARIO = 3 : 4; TRUE : 0; esac;
+  init(loc_c) := case SCENARIO = 1 : 1; SCENARIO = 2 : 3; SCENARIO = 3 : 1; TRUE : 0; esac;
+  init(loc_d) := case SCENARIO = 1 : 5; SCENARIO = 2 : 4; SCENARIO = 3 : 5; TRUE : 0; esac;
   init(move) := 0;
 
--- transições de estado
-ASSIGN
-  next(loc_a) :=
-    case
-      move = 1 & can_move_a_on_c : ON_C;
-      TRUE : loc_a;
-    esac;
+  -- transições de estado
+  next(loc_a) := case
+    move = 1 & can_move_a_to_table : TABLE_A;
+    move = 2 & can_move_a_on_b : ON_B;
+    move = 3 & can_move_a_on_c : ON_C;
+    move = 4 & can_move_a_on_d : ON_D;
+    move = 6 & can_move_b_on_a : loc_a; -- se B vai para A, A não muda
+    move = 9 & can_move_c_on_a : loc_a; -- se C vai para A, A não muda
+    move = 13 & can_move_d_on_a : loc_a;-- se D vai para A, A não muda
+    TRUE : loc_a;
+  esac;
 
-  next(loc_b) :=
-    case
-      move = 2 & can_move_b_on_a : ON_A;
-      TRUE : loc_b;
-    esac;
+  next(loc_b) := case
+    move = 5 & can_move_b_to_table : TABLE_B;
+    move = 6 & can_move_b_on_a : ON_A;
+    move = 7 & can_move_b_on_c : ON_C;
+    move = 8 & can_move_b_on_d : ON_D;
+    TRUE : loc_b;
+  esac;
 
-  next(loc_c) := loc_c;
+  next(loc_c) := case
+    move = 9 & can_move_c_to_table : TABLE_C;
+    move = 10 & can_move_c_on_a : ON_A;
+    move = 11 & can_move_c_on_b : ON_B;
+    move = 12 & can_move_c_on_d : ON_D;
+    TRUE : loc_c;
+  esac;
 
-  next(loc_d) :=
-    case
-      move = 3 & can_move_d_on_b : ON_B;
-      TRUE : loc_d;
-    esac;
+  next(loc_d) := case
+    move = 13 & can_move_d_to_table : TABLE_D;
+    move = 14 & can_move_d_on_a : ON_A;
+    move = 15 & can_move_d_on_b : ON_B;
+    move = 16 & can_move_d_on_c : ON_C;
+    TRUE : loc_d;
+  esac;
 
-  next(move) :=
-    case
-      move < 3 : move + 1;
-      TRUE : 0;
-    esac;
-
--- objetivos (traduzidos dos goal_state_n do Prolog)
-DEFINE
-  -- Situação 1: torre c–a–b–d
-  goal1 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
-
-  -- Situação 2: torre c–a–b–d (mesmo objetivo, mesa diferente)
-  goal2 := (loc_c = 0) & (loc_a = ON_C) & (loc_b = ON_A) & (loc_d = ON_B);
-
-  -- Situação 3: torre c–d–a–b
-  goal3 := (loc_c = 0) & (loc_d = ON_C) & (loc_a = ON_D) & (loc_b = ON_A);
+  -- A escolha da próxima ação é não-determinística
+  next(move) := {0..16};
 
 -- Especificações CTL
--- NOTA: verificamos !EF(goalX)
---       Se for FALSA => existe plano (contraexemplo = sequência de ações)
+CTLSPEC !(EF(SCENARIO = 1 -> goal1))
+CTLSPEC !(EF(SCENARIO = 2 -> goal2))
+CTLSPEC !(EF(SCENARIO = 3 -> goal3))
 
-CTLSPEC !EF(goal1)
-CTLSPEC !EF(goal2)
-CTLSPEC !EF(goal3)
+FAIRNESS running
 
--- FAIRNESS TRUE para garantir geração de traço completo
-FAIRNESS TRUE
